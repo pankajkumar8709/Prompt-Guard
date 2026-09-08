@@ -517,11 +517,11 @@ export function ChatPage() {
                             </button>
                           )}
                         </div>
-                        {m.meta.explanation && expandedExplainId === m.id && (
-                          <div className="mt-2 px-2 py-2 rounded-lg bg-[#0D0F17] border border-[#252A3A] text-[11px] text-gray-300">
-                            {m.meta.explanation || '—'}
-                          </div>
-                        )}
+                      )}
+                      {!isUser && m.meta && m.meta.explanation && expandedExplainId === m.id && (
+                        <div className="mt-2 px-2 py-2 rounded-lg bg-[#0D0F17] border border-[#252A3A] text-[11px] text-gray-300">
+                          {m.meta.explanation || '—'}
+                        </div>
                       )}
                     </div>
                   </motion.div>

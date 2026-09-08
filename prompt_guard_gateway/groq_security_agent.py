@@ -96,6 +96,23 @@ def fast_rule_check(text: str) -> dict | None:
                 "MALICIOUS", "BLOCK", "FAST_RULE", "MALICIOUS",
                 result["reasoning"], 1.0, 1.0, text, 0.0, 0.0
             )
+            # Keep the full analysis contract even on the fast path so
+            # downstream consumers (API/tests) always see the same keys.
+            result.update({
+                "critic_feedback": None,
+                "decision_delta": None,
+                "critic_invoked": False,
+                "sanitization": None,
+                "was_sanitized": False,
+                "attack_chain": get_default_detector().add_turn(
+                    session_id=session_id,
+                    text=text[:200],
+                    intent="MALICIOUS",
+                    risk_score=1.0,
+                    classification="MALICIOUS",
+                    attack_type="FAST_RULE",
+                ),
+            })
             return result
     return None
 
@@ -266,7 +283,7 @@ Current message to classify: "{text}"
     try:
         client = get_client()
         resp = client.chat.completions.create(
-            model=os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant"),
+            model=os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": SECURITY_AGENT_PROMPT},
                 {"role": "user", "content": user_content}

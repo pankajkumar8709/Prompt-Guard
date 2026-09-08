@@ -1394,12 +1394,12 @@ def model_info() -> dict:
     return {
         "architecture": "groq_agent_3_layer",
         "security_backend": "self_governance" if use_sg else "legacy",
-        "security_model": os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant"),
-        "banking_model": os.getenv("GROQ_BANKING_MODEL", "llama-3.3-70b-versatile"),
+        "security_model": os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b"),
+        "banking_model": os.getenv("GROQ_BANKING_MODEL", "openai/gpt-oss-120b"),
         "layers": [
             {"name": "fast_rules", "patterns": 15, "latency_ms": "<5"},
-            {"name": security_layer, "model": os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant")},
-            {"name": "banking_responder", "model": os.getenv("GROQ_BANKING_MODEL", "llama-3.3-70b-versatile")}
+            {"name": security_layer, "model": os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")},
+            {"name": "banking_responder", "model": os.getenv("GROQ_BANKING_MODEL", "openai/gpt-oss-120b")}
         ]
     }
 

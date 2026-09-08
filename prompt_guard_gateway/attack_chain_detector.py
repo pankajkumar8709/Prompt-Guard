@@ -65,7 +65,11 @@ class AttackChainDetector:
             self.sessions[session_id] = self.sessions[session_id][-self.max_history:]
         
         # Analyze attack chain
-        return self._analyze_chain(session_id)
+        result = self._analyze_chain(session_id)
+        # Always include turn_count, even for single-turn sessions where the
+        # chain analysis short-circuits.
+        result.setdefault("turn_count", len(self.sessions.get(session_id, [])))
+        return result
     
     def _analyze_chain(self, session_id: str) -> Dict:
         """Analyze session for attack chain patterns."""

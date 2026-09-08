@@ -347,7 +347,7 @@ Current message to classify:
     try:
         client = _get_client()
         resp = client.chat.completions.create(
-            model=os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant"),
+            model=os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": SELF_GOVERNANCE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},

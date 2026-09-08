@@ -117,7 +117,7 @@ Re-evaluate this decision. Is it correct or should it be changed?
 """
         
         resp = client.chat.completions.create(
-            model=os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant"),
+            model=os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": CRITIC_PROMPT},
                 {"role": "user", "content": user_content}
