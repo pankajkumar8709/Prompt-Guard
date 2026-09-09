@@ -76,7 +76,7 @@ FAST_BLOCK_PATTERNS = [
     r"disregard\s+prior\s+instructions",
 ]
 
-def fast_rule_check(text: str) -> dict | None:
+def fast_rule_check(text: str, session_id: str = "default") -> dict | None:
     """Returns block result if obvious attack, None otherwise."""
     t = text.lower().strip()
     for pattern in FAST_BLOCK_PATTERNS:
@@ -220,7 +220,7 @@ def analyze(text: str, session_id: str = "default", history: list = []) -> dict:
     memory_match = threat_memory.search(text)
 
     # Layer 1: Fast rules
-    fast_result = fast_rule_check(text)
+    fast_result = fast_rule_check(text, session_id=session_id)
     if fast_result:
         # Try sanitization first if enabled
         sanitization_enabled = os.getenv("ENABLE_SANITIZATION", "true").lower() == "true"
@@ -289,7 +289,7 @@ Current message to classify: "{text}"
                 {"role": "user", "content": user_content}
             ],
             temperature=0,
-            max_tokens=200
+            max_tokens=512
         )
         result = parse_groq_response(resp.choices[0].message.content)
 

@@ -123,7 +123,7 @@ Re-evaluate this decision. Is it correct or should it be changed?
                 {"role": "user", "content": user_content}
             ],
             temperature=0.2,  # Slightly higher for diverse reasoning
-            max_tokens=150
+            max_tokens=512
         )
         
         critic_result = _parse_critic_response(resp.choices[0].message.content)
