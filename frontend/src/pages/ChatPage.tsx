@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Send, Shield, MessageSquare, Copy, Flag, Info, ArrowDown, Plus, Trash2, LayoutDashboard, Home, ChevronDown, ChevronUp } from 'lucide-react'
 import { getTenants, postChat } from '../lib/api'
 import { getApiBaseUrl } from '../lib/env'
@@ -34,6 +36,17 @@ function uuid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16)
 }
 
+/** Strip markdown syntax for plain-text previews (session titles, etc.) */
+function stripMarkdown(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\|/g, ' ')
+    .replace(/[#*_~`>\-]{1,3}/g, ' ')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function formatTime(ts: number) {
   const d = new Date(ts)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -49,54 +62,122 @@ function ThinkingDots() {
   )
 }
 
-function FormattedMessage({ text }: { text: string }) {
-  // Split text into paragraphs
-  const paragraphs = text.split('\n\n').filter(p => p.trim())
-  
+function CopyCodeButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
   return (
-    <div className="space-y-3">
-      {paragraphs.map((para, i) => {
-        // Check if it's a list
-        if (para.includes('\n-') || para.includes('\n•') || /^\d+\./.test(para)) {
-          const items = para.split('\n').filter(item => item.trim())
-          return (
-            <ul key={i} className="space-y-2 ml-4">
-              {items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0" />
-                  <span className="text-sm leading-relaxed">{item.replace(/^[-•]\s*|^\d+\.\s*/, '')}</span>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-        
-        // Check if it's a code block
-        if (para.includes('```')) {
-          const code = para.replace(/```\w*\n?|```/g, '').trim()
-          return (
-            <div key={i} className="relative rounded-lg bg-[#0D0F17] border border-[#252A3A] p-4 font-mono text-xs overflow-x-auto">
-              <button type="button" onClick={() => navigator.clipboard.writeText(code)} className="absolute top-2 right-2 p-1 hover:bg-white/5 rounded" title="Copy">
-                <Copy className="w-3 h-3 text-gray-400" />
-              </button>
-              <pre className="text-gray-300">{code}</pre>
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(code)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      }}
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-[#16192A] border border-[#252A3A] hover:border-cyan-500/40 transition-colors"
+      title="Copy code"
+    >
+      {copied ? (
+        <span className="text-[10px] text-emerald-400 font-semibold px-0.5">Copied</span>
+      ) : (
+        <Copy className="w-3.5 h-3.5 text-gray-400" />
+      )}
+    </button>
+  )
+}
+
+function MarkdownMessage({ text }: { text: string }) {
+  return (
+    <div className="markdown-body text-sm leading-relaxed text-white space-y-3">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Headings
+          h1: ({ children }) => (
+            <h1 className="text-lg font-bold text-cyan-300 mt-4 mb-2 first:mt-0">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-base font-bold text-cyan-300 mt-4 mb-2 first:mt-0">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-sm font-bold text-cyan-300 mt-3 mb-1.5 first:mt-0">{children}</h3>
+          ),
+          h4: ({ children }) => (
+            <h4 className="text-sm font-semibold text-cyan-200 mt-3 mb-1.5 first:mt-0">{children}</h4>
+          ),
+          // Paragraphs
+          p: ({ children }) => <p className="text-sm leading-relaxed text-white">{children}</p>,
+          // Bold / italic / inline code
+          strong: ({ children }) => (
+            <strong className="text-cyan-300 font-semibold">{children}</strong>
+          ),
+          em: ({ children }) => <em className="text-gray-300 italic">{children}</em>,
+          code: (props) => {
+            const { children, className } = props as { children?: React.ReactNode; className?: string }
+            const isBlock = /language-/.test(className || '')
+            if (isBlock) {
+              return <code className="block font-mono text-xs text-gray-300 whitespace-pre">{children}</code>
+            }
+            return (
+              <code className="px-1.5 py-0.5 rounded bg-[#0D0F17] border border-[#252A3A] font-mono text-xs text-cyan-300">
+                {children}
+              </code>
+            )
+          },
+          pre: ({ children }) => {
+            const raw = typeof children === 'object' && children !== null && 'props' in children
+              ? String((children as { props?: { children?: unknown } }).props?.children ?? '')
+              : String(children ?? '')
+            return (
+              <div className="relative rounded-lg bg-[#0D0F17] border border-[#252A3A] p-4 font-mono text-xs overflow-x-auto my-2">
+                <CopyCodeButton code={raw.replace(/\n$/, '')} />
+                <pre className="text-gray-300">{children}</pre>
+              </div>
+            )
+          },
+          // Lists
+          ul: ({ children }) => <ul className="space-y-1.5 ml-1 list-none">{children}</ul>,
+          ol: ({ children }) => <ol className="space-y-1.5 ml-5 list-decimal marker:text-cyan-400">{children}</ol>,
+          li: ({ children }) => (
+            <li className="flex items-start gap-2 text-sm leading-relaxed text-white">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0" />
+              <span className="min-w-0">{children}</span>
+            </li>
+          ),
+          // Blockquote
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-cyan-500/50 pl-3 py-1 text-gray-300 italic bg-cyan-500/5 rounded-r-lg">
+              {children}
+            </blockquote>
+          ),
+          // Horizontal rule
+          hr: () => <hr className="border-[#252A3A] my-3" />,
+          // Links
+          a: ({ children, href }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2">
+              {children}
+            </a>
+          ),
+          // Tables (GFM) — the big one for banking responses
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 rounded-lg border border-[#252A3A]">
+              <table className="w-full text-xs border-collapse">{children}</table>
             </div>
-          )
-        }
-        
-        // Regular paragraph with bold/inline code formatting
-        const formatted = para
-          .split(/\*\*(.*?)\*\*/g)
-          .map((part, j) => 
-            j % 2 === 1 ? <strong key={j} className="text-cyan-400 font-semibold">{part}</strong> : part
-          )
-        
-        return (
-          <p key={i} className="text-sm leading-relaxed text-white">
-            {formatted}
-          </p>
-        )
-      })}
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-[#0D0F17]">{children}</thead>
+          ),
+          th: ({ children }) => (
+            <th className="px-3 py-2 text-left font-semibold text-cyan-300 border-b border-[#252A3A] whitespace-nowrap">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3 py-2 text-gray-200 border-b border-[#1E2028] align-top">{children}</td>
+          ),
+          tr: ({ children }) => <tr className="hover:bg-white/[0.02] transition-colors">{children}</tr>,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
     </div>
   )
 }
@@ -339,7 +420,7 @@ export function ChatPage() {
                 <MessageSquare className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white font-medium truncate">
-                    {s.last_message || 'New Chat'}
+                    {stripMarkdown(s.last_message) || 'New Chat'}
                   </div>
                   <div className="text-[10px] text-gray-500 mt-1">
                     {s.message_count} messages
@@ -453,7 +534,7 @@ export function ChatPage() {
                         {isUser ? (
                           <p className="text-sm leading-relaxed text-white whitespace-pre-wrap">{m.text}</p>
                         ) : (
-                          <FormattedMessage text={m.text} />
+                          <MarkdownMessage text={m.text} />
                         )}
                         
                         {/* Reaction Bar */}
@@ -562,7 +643,7 @@ export function ChatPage() {
                   </div>
                   
                   <motion.button
-                    onClick={send}
+                    onClick={() => send()}
                     disabled={sending || !input.trim()}
                     className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed glow-cyan"
                     whileHover={{ scale: 1.05 }}
